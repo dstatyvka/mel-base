@@ -125,4 +125,5 @@ Description:
   (make-string-input-stream seq))
 
 (defmethod make-sequence-input-stream ((seq vector))
-  (flexi-streams:make-flexi-stream (flexi-streams:make-in-memory-input-stream seq)))
+  (flexi-streams:make-flexi-stream (flexi-streams:make-in-memory-input-stream seq)
+				   :external-format (flexi-streams:make-external-format :iso-8859-1 :eol-style :crlf)))

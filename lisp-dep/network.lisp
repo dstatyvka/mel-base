@@ -49,7 +49,7 @@
 
 #-lispworks
 (defun make-ssl-connection (fd)
-  (cl+ssl:make-ssl-client-stream fd :external-format :iso-8859-1))
+  (cl+ssl:make-ssl-client-stream fd :external-format (flex:make-external-format :iso-8859-1 :eol-style :crlf)))
 
 #+lispworks
 (defun make-ssl-connection (sock-stream)

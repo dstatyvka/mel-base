@@ -237,8 +237,9 @@
 			   (if eof-errorp
 			       (error 'end-of-imap-response)
 			       (return-from imap-read eof-value)))
-          #-faithful-input((char= #\return char) (read-char stream) 
-			   (accept-char #\linefeed stream)
+          #-faithful-input((char= #\linefeed char) ;; (char= #\return char)
+			   (read-char stream) 
+			   ;; (accept-char #\linefeed stream)
 			   (if eof-errorp
 			       (error 'end-of-imap-response)
 			       (return-from imap-read eof-value)))
@@ -253,7 +254,7 @@
 	  ((char= #\{ char) (read-char stream)
 	   (let ((number (read-number stream)))
 	     (unless (accept-char #\} stream) (error "Syntax error"))
-	     #-faithful-input(unless (accept-char #\return stream) (error "Syntax error"))
+	     ;; #-faithful-input(unless (accept-char #\return stream) (error "Syntax error"))
 	     (unless (accept-char #\linefeed stream) (error "Syntax error"))
 	     #-faithful-input
 	     (let ((buffer (make-array number :element-type '(unsigned-byte 8))))
@@ -304,7 +305,7 @@
 
 ;; Response
 
-(declaim (inline read-response))
+(declaim (notinline read-response))
 (defun read-response (stream)
   (let (result)
     (handler-case
@@ -464,7 +465,7 @@
 
 (defun authenticate-cram-md5 (sink-folder)
   (format (connection sink-folder) "CRAM AUTHENTICATE CRAM-MD5")
-  (write-char #\return (connection sink-folder))
+  ;; (write-char #\return (connection sink-folder))
   (write-char #\linefeed (connection sink-folder))
   (force-output (connection sink-folder))
   (process-response 
@@ -479,14 +480,15 @@
                             (format t "(Response) ~A~%" (map 'string #'code-char response))
                             (write-string (mel.mime::encode-base64 response)
                                           (connection sink-folder))
-                            (write-char #\return (connection sink-folder))
+                            ;; (write-char #\return (connection sink-folder))
                             (write-char #\linefeed (connection sink-folder))
                             (force-output (connection sink-folder))))))))
 
 (defmethod login ((folder imap-folder))
   (let ((connection (connection folder)))
-    (format connection "c01 LOGIN ~A \"~A\"~A~A"
-            (username folder) (password folder) #\return #\linefeed)
+    (format connection "c01 LOGIN ~A \"~A\"~A"
+            (username folder) (password folder) ;; #\return
+	    #\linefeed)
 
     ;; Not really tested yet
     ;    (authenticate-cram-md5 folder)
@@ -525,7 +527,7 @@
 		       string args)))
 	(apply #'format stream
 	       string args)
-	(write-char #\return stream)
+	;; (write-char #\return stream)
 	(write-char #\linefeed stream)
 	(force-output stream))
     (end-of-file () (setf (state folder) :disconnected))))
@@ -546,8 +548,9 @@
   (unless (connection folder)
     (ensure-connection folder))
   (let ((stream (connection folder)))
-    (format stream "~A select ~A~A~A" "t01" (mailbox folder)
-	    #\return #\linefeed)
+    (format stream "~A select ~A~A" "t01" (mailbox folder)
+	    ;; #\return
+	    #\linefeed)
     (force-output stream)
     (let (recent exists)
       (process-response folder 
@@ -642,7 +645,7 @@
    :on-continuation (lambda (type arguments)
 		      (declare (ignore type arguments))
 		      (write-sequence message-string (connection sink-folder))
-		      (write-char #\return (connection sink-folder))
+		      ;; (write-char #\return (connection sink-folder))
 		      (write-char #\linefeed (connection sink-folder))
 		      (force-output (connection sink-folder))))))
 
@@ -662,14 +665,16 @@
 
 (defmethod fetch-message-header ((folder imap-folder) uid)
   (send-command folder "~A uid fetch ~A (UID BODY[HEADER])"
-	    "HEADER" uid #\return #\linefeed)
+	    "HEADER" uid ;; #\return
+	    #\linefeed)
   (let (result)
     (process-response folder :on-header (lambda (header) (setf result header)))
     result))
 
 (defmethod fetch-all-message-headers ((folder imap-folder))
   (send-command folder "~A fetch 1:* (UID BODY[HEADER])"
-	    "HEADER" #\return #\linefeed)
+	    "HEADER" ;; #\return
+	    #\linefeed)
     (process-response folder :on-header (lambda (header) (declare (ignore header)))))
 
 
@@ -863,7 +868,8 @@
     (loop for (start . end) in ranges
 	  do
 	  (send-command folder "~A fetch ~a:~a (BODY[HEADER])"
-			"HEADER" start end #\return #\linefeed)
+			"HEADER" start end ;; #\return
+			#\linefeed)
 	  (process-response
 	   folder :on-header
 	   (lambda (header)
