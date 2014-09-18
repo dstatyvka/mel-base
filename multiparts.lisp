@@ -179,35 +179,35 @@
     (flet ((peek ()
 	     (peek-char nil in-stream nil :eof))
 	   (consume ()
-	     (prog1
-		 (read-char in-stream)
-	       (incf octets))))
-	     (tagbody
-	      start (let ((c (peek)))
-		      (case c
-			(#\return (consume) (go cr))
-			(#\linefeed (consume) (go lf))
-                        (:eof (go eof))
-			(otherwise (consume) (go start))))
-		
-	      lf (go newline)
-		
-	      cr 
-		(let ((c (peek)))
-		  (case c
-		    (#\linefeed 
-                     (consume) (go newline))
-                    (:eof (incf lines) (go eof))
-		    (otherwise
-                     (go newline))))
-		
-	      newline 
-                (incf lines)
-                (go start)
-              
-              eof
-              (return-from read-lines-and-octets
-                (values lines octets))))))
+             (let ((ch (read-char in-stream)))
+               (incf octets (if (char= #\Newline) 2 1))
+               ch)))
+      (tagbody
+       start (let ((c (peek)))
+               (case c
+                 (#\return (consume) (go cr))
+                 (#\linefeed (consume) (go lf))
+                 (:eof (go eof))
+                 (otherwise (consume) (go start))))
+         
+       lf (go newline)
+         
+       cr 
+         (let ((c (peek)))
+           (case c
+             (#\linefeed 
+              (consume) (go newline))
+             (:eof (incf lines) (go eof))
+             (otherwise
+              (go newline))))
+         
+       newline 
+         (incf lines)
+         (go start)
+         
+       eof
+         (return-from read-lines-and-octets
+           (values lines octets))))))
 
 (defun scan-forward-boundary-tag (in-stream boundary)
   (let ((tag (concatenate 'string "--" boundary))
@@ -219,76 +219,76 @@
 	     (peek-char nil in-stream nil :eof))
            (skip () (read-char in-stream))
 	   (consume ()
-	     (prog1
-		 (read-char in-stream)
-	       (incf octets))))
-	     (tagbody
-              init (let ((c (peek)))
-                     (if (char= c #\-)
-                       (go possible-boundary)
-                       (go start)))
-	      start (let ((c (peek)))
-		      (case c
-			(#\return (skip) (go cr))
-			(#\linefeed (skip) (go lf))
-			(otherwise (consume) (go start))))
-		
-	      lf (setf line-ending-octets 1) (go newline)
-		
-	      cr 
-		(let ((c (peek)))
-		  (case c
-		    (#\linefeed (setf line-ending-octets 2)
-                                (skip) (go newline))
-		    (otherwise
-                     (setf line-ending-octets 1)
-                     (go newline))))
-		
-	      newline 
-                (let ((c (peek)))
-                  (case c
-                    (#\- (go possible-boundary))
-                    (otherwise (incf octets line-ending-octets)
-                               (incf lines)
-                               (setf line-ending-octets 0)
-                               (go start))))
+	     (let ((ch (read-char in-stream)))
+	       (incf octets (if (char= #\Newline) 2 1))
+               ch)))
+      (tagbody
+       init (let ((c (peek)))
+              (if (char= c #\-)
+                  (go possible-boundary)
+                  (go start)))
+       start (let ((c (peek)))
+               (case c
+                 (#\return (skip) (go cr))
+                 (#\linefeed (skip) (go lf))
+                 (otherwise (consume) (go start))))
+         
+       lf (setf line-ending-octets 1) (go newline)
+         
+       cr 
+         (let ((c (peek)))
+           (case c
+             (#\linefeed (setf line-ending-octets 2)
+                         (skip) (go newline))
+             (otherwise
+              (setf line-ending-octets 1)
+              (go newline))))
+         
+       newline 
+         (let ((c (peek)))
+           (case c
+             (#\- (go possible-boundary))
+             (otherwise (incf octets line-ending-octets)
+                        (incf lines)
+                        (setf line-ending-octets 0)
+                        (go start))))
 
-              possible-boundary
-                  (if (= match (length tag))
-                    (go boundary-matched)
-                    (let ((c (peek)))
-                      (cond ((char= c (char tag match))
-                             (skip) (incf match)(go possible-boundary))
-                            (t (incf octets (+ line-ending-octets match))
-                               (setf match 0 line-ending-octets 0)
-                               (incf lines)
-                               (go start)))))
-              boundary-matched
-                  (let ((c (peek)))
-                    (case c
-                      (#\- (skip)
-                           (case c
-                             (#\- (go end-boundary))
-                             (otherwise (go boundary))))
-                      (otherwise (go boundary))))
-             
-              boundary
-                  (loop until (case (peek) ((#\return #\linefeed :eof) t)
-                                (otherwise nil))
-                        do (skip))
-                  (loop while (case (peek) ((#\return #\linefeed) t)
-                                (otherwise nil))
-                        do (skip))
-                  (return-from scan-forward-boundary-tag
-                    (values octets lines nil))
-                  
-              end-boundary
-                   (loop until (case (peek) ((#\return #\linefeed :eof) t)
-                                 (otherwise nil))
-                         do (skip))
-                  (return-from scan-forward-boundary-tag
-                    (values octets lines t))
-                   ))))
+       possible-boundary
+         (if (= match (length tag))
+             (go boundary-matched)
+             (let ((c (peek)))
+               (cond ((char= c (char tag match))
+                      (skip) (incf match)(go possible-boundary))
+                     (t (incf octets (+ line-ending-octets match))
+                        (setf match 0 line-ending-octets 0)
+                        (incf lines)
+                        (go start)))))
+       boundary-matched
+         (let ((c (peek)))
+           (case c
+             (#\- (skip)
+                  (case c
+                    (#\- (go end-boundary))
+                    (otherwise (go boundary))))
+             (otherwise (go boundary))))
+         
+       boundary
+         (loop until (case (peek) ((#\return #\linefeed :eof) t)
+                           (otherwise nil))
+            do (skip))
+         (loop while (case (peek) ((#\return #\linefeed) t)
+                           (otherwise nil))
+            do (skip))
+         (return-from scan-forward-boundary-tag
+           (values octets lines nil))
+         
+       end-boundary
+         (loop until (case (peek) ((#\return #\linefeed :eof) t)
+                           (otherwise nil))
+            do (skip))
+         (return-from scan-forward-boundary-tag
+           (values octets lines t))
+         ))))
 			        
 (defun compute-bodystructure (message)
   (compute-bodystructure-using-folder (folder message) message))
@@ -420,12 +420,14 @@
 (defmethod nth-part (nth (message mime-header-mixin))
   (make-instance 'part :parent message :part-number nth))
 
-(defun part-body-string (part)
+(defun part-body-string (part &aux (p #\Nul))
   (with-output-to-string (out)
     (with-open-stream (s (message-body-stream part))
-      (loop repeat (content-octets part)
-	    for c = (read-char s)
-	    do (write-char c out)))))
+      (loop
+         :repeat (content-octets part)
+         :do (setf p (if (char= #\Newline p)
+                         #\Nul
+                         (write-char (read-char s) out)))))))
 
 #+nil
 (defun part-string (part)

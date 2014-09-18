@@ -93,8 +93,8 @@
                  (c (peek-char nil in-stream)))
 	     (declare (type character c))
              (when (member c acceptable-chars)
-               (read-char in-stream)
-	       (incf octets)))))
+               (let ((ch (read-char in-stream)))
+                 (incf octets (if (char= #\Newline ch) 2 1)))))))
     #-(or sbcl cmu)(declare (dynamic-extent #'accept))
     (let (c)
       (tagbody
@@ -132,7 +132,7 @@
   (let ((c (peek-char nil stream nil nil)))
     (when c
       (case c
-        (#\newline (read-char stream) 1)
+        (#\newline (read-char stream) 2)
         (#\return (read-char stream) 
                   (cond ((eql (peek-char nil stream) #\linefeed)
                          (read-char stream) 2)
@@ -182,7 +182,7 @@
 			 (otherwise nil))
 		 finally (return (case c
 				   (#\return (cond ((accept-char #\linefeed stream)
-						    (prog1 :rfc (incf file-position)))
+						    (prog1 :rfc (incf file-position 2)))
 						   ((accept-char #\return stream)
 						    (read-char stream)
 						    :courier)
@@ -214,13 +214,15 @@
           (with-output-to-string (field-name field-name-buffer)
             (with-output-to-string (field-body)
               (loop
-               (loop for c = (prog1 (read-char stream) (incf octets))
+               (loop for c = (let ((ch (read-char stream)))
+                               (incf octets (if (char= #\Newline ch) 2 1))
+                               ch)
 		     while (field-name-char-p c) do (write-char c field-name))
                (incf octets (transmit-field-body stream field-body))
                (push (cons (intern-header-name field-name-buffer)
                            (get-output-stream-string field-body)) fields)
                (setf (fill-pointer field-name-buffer) 0)
-               (when-let (n (accept-newline stream)) (incf octets) (return)))))
+               (when-let (n (accept-newline stream)) (incf octets n) (return)))))
           (values (nreverse fields) octets))
     (end-of-file () (values (nreverse fields) octets)))))
 
