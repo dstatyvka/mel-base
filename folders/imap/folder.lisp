@@ -729,7 +729,7 @@
     (labels ((return-messages (list)
 	       (setf messages
 		     (mapcar (lambda (uid)
-			       (find-message folder uid))
+			       (find-message folder uid :if-does-not-exist :create))
 			     list))))
       (process-response folder :on-list #'return-messages)
       messages)))
