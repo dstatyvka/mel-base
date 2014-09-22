@@ -372,13 +372,6 @@
 		   (when on-bodystructure
 		     (funcall on-bodystructure message))
 		   (setf part message))
-		 (when-let (message (getf form :BODY[HEADER]))
-		   (with-input-from-sequence (s message)
-		     (setf (weird-mail.mime:header-fields (sequence-number-message folder n))
-			   (mel.mime:read-rfc2822-header s)))
-		   (when on-header
-		     (funcall on-header message))
-		   (setf part message))
 		 (when-let (message (getf form :|BODY[TEXT]|))
 		   (when on-body
 		     (funcall on-body message))
@@ -417,6 +410,15 @@
 			 (setf (gethash (uid message) (size-table folder))
 			       size))
 		       (funcall on-size message)))
+
+		   (when-let (message (getf form :BODY[HEADER]))
+		     (with-input-from-sequence (s message)
+		       (setf (weird-mail.mime:header-fields (sequence-number-message folder n))
+			     (mel.mime:read-rfc2822-header s)))
+		     (when on-header
+		       (funcall on-header message))
+		     (setf part message))
+
 		   (push form attributes))))
 
 	;; Process next IMAP response
